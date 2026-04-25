@@ -24,6 +24,14 @@ async def check_pnr(request: PNRRequest):
         if not passenger:
             raise HTTPException(status_code=404, detail="No passenger data found")
 
+        # If chart is prepared, status is final — no prediction needed
+        if train_info.chart_prepared:
+            return PNRResponse(
+                success=True,
+                train_info=train_info,
+                prediction=None,
+            )
+
         prediction = predict_confirmation(
             pnr=request.pnr,
             class_code=train_info.class_code,

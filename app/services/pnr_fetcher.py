@@ -187,16 +187,38 @@ def _build_train_info(pnr, d, train_num, train_name, from_code, from_name,
     to_name    = str(to_name    or to_code)
     doj        = fmt_date(str(doj      or ""))
     cls        = str(cls        or "SL")
-    booked_on  = fmt_date(str(booked_on or ""))
+    # Handle both "DD-MM-YYYY" and "Apr 25, 2026 10:04:00 AM" booking date formats
+    booked_raw = str(booked_on or "")
+    booked_on_fmt = booked_raw
+    for _fmt in ("%b %d, %Y %I:%M:%S %p", "%b %d, %Y", "%d-%m-%Y", "%Y-%m-%d"):
+        try:
+            from datetime import datetime as _dt2
+            booked_on_fmt = _dt2.strptime(booked_raw.strip(), _fmt).strftime("%d %b %Y")
+            break
+        except:
+            pass
 
     quota_raw  = str(quota or "GN")
     quota_map  = {"GN":"General (GN)","TQ":"Tatkal (TQ)","LD":"Ladies (LD)","SC":"Senior Citizen (SC)","CK":"Tatkal (CK)","DF":"Defence (DF)"}
     quota_disp = quota_map.get(quota_raw, quota_raw)
 
+    # Extract departure time from dateOfJourney if API doesn't provide it separately
+    # e.g. "Apr 26, 2026 6:00:00 AM" -> "06:00"
     timing = TRAIN_TIMINGS.get(train_num, {})
-    dep    = timing.get("dep", "—")
-    arr    = timing.get("arr", "—")
-    dur    = timing.get("dur", "N/A")
+    dep_from_doj = ""
+    try:
+        from datetime import datetime as _dt
+        _parsed = _dt.strptime(str(d.get("dateOfJourney") or "").strip(), "%b %d, %Y %I:%M:%S %p")
+        dep_from_doj = _parsed.strftime("%H:%M")
+    except:
+        pass
+    dep = str(d.get("departureTime") or d.get("dep_time") or d.get("fromTime") or dep_from_doj or timing.get("dep", "—"))
+    arr = str(d.get("arrivalTime")   or d.get("arr_time") or d.get("toTime")   or timing.get("arr", "—"))
+    dur = str(d.get("duration")      or timing.get("dur", "N/A"))
+    # Chart status
+    chart_raw = d.get("chartStatus") or d.get("chartPrepared") or ""
+    chart_prepared = str(chart_raw).lower() not in ["false", "chart not prepared", "", "none"]
+    chart_label = "Chart Prepared" if chart_prepared else "Chart Not Prepared"
 
     passengers = []
     for i, p in enumerate(pax_list, start=1):
@@ -220,7 +242,7 @@ def _build_train_info(pnr, d, train_num, train_name, from_code, from_name,
         passengers = [PassengerInfo(name="Passenger 1", age=0, gender="—",
                                     booking_status="—", current_status="—")]
 
-    print(f"[Parser] {train_num} {train_name} | {from_code}→{to_code} | {doj} | {len(passengers)} pax")
+    print(f"[Parser] {train_num} {train_name} | {from_code}→{to_code} | {doj} | {len(passengers)} pax | chart={chart_label}")
     return TrainInfo(
         pnr=pnr, train_number=train_num, train_name=train_name,
         from_station=from_code, from_station_name=from_name,
@@ -228,7 +250,8 @@ def _build_train_info(pnr, d, train_num, train_name, from_code, from_name,
         departure_time=dep,     arrival_time=arr,
         journey_date=doj,       duration=dur,
         class_code=cls,         quota=quota_disp,
-        booked_on=booked_on,    passengers=passengers,
+        booked_on=booked_on_fmt, passengers=passengers,
+        chart_prepared=chart_prepared,
     )
 
 def simulate_pnr_data(pnr: str) -> TrainInfo:

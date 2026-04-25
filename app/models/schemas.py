@@ -33,6 +33,7 @@ class TrainInfo(BaseModel):
     class_code: str
     quota: str
     booked_on: str
+    chart_prepared: bool = False
     passengers: List[PassengerInfo]
 
 class PredictionFactors(BaseModel):
