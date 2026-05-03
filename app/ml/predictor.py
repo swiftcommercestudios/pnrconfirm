@@ -182,7 +182,15 @@ def predict_confirmation(
         label = "Low"
 
     # --- Recommendation ---
-    if prob >= 0.75:
+    is_rac = current_status.upper().startswith("RAC")
+    if is_rac:
+        if prob >= 0.65:
+            rec = "You have RAC — a shared berth is guaranteed. There is a good chance you will get a full berth before departure. Monitor your status."
+        elif prob >= 0.40:
+            rec = "You have RAC — a shared berth is guaranteed. Full berth confirmation is possible but not certain. Keep checking your status."
+        else:
+            rec = "You have RAC — a shared berth is guaranteed. Full berth is unlikely at this stage. You will still board the train with a shared berth."
+    elif prob >= 0.75:
         rec = "Your ticket has a strong chance of confirming. No immediate action needed — monitor status."
     elif prob >= 0.50:
         rec = "Moderate chance. Consider booking a backup Tatkal ticket 2 days before travel as a safety net."

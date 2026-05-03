@@ -39,7 +39,7 @@ async def check_pnr(request: PNRRequest):
                 prediction=None,
             )
 
-        # 5. Check if ticket is cancelled
+        # 5. Check if ticket is cancelled or RAC
         current = passenger.current_status.upper()
         if current.startswith("CAN"):
             return PNRResponse(
@@ -47,6 +47,9 @@ async def check_pnr(request: PNRRequest):
                 train_info=train_info,
                 prediction=None,
             )
+
+        # RAC + chart not prepared = can still predict full berth confirmation
+        # RAC + chart prepared = handled above already
 
         prediction = predict_confirmation(
             pnr=request.pnr,
