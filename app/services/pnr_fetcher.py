@@ -115,6 +115,13 @@ async def fetch_api2(pnr: str) -> Optional[dict]:
                 if "exceeded" in top_msg or (data.get("success") is False and "exceeded" in str(data).lower()):
                     print("[API2] Quota exceeded.")
                     return None
+                # Validate response has actual train data — flushed PNRs return empty fields
+                inner = data.get("data") or {}
+                train_num = str(inner.get("trainNumber") or inner.get("trainNo") or "").strip()
+                train_name = str(inner.get("trainName") or "").strip()
+                if not train_num or train_num in ["0", "00000"] or not train_name:
+                    print("[API2] Empty response — PNR is flushed, invalid or not found")
+                    return None
                 return data
     except Exception as e:
         print(f"[API2] Error: {e}")
